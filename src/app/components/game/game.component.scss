@@ -5,20 +5,52 @@ h1 {
 }
 
 canvas {
-    padding-left: 0;
-    padding-right: 0;
-    margin-left: auto;
-    margin-right: auto;
+    margin: 25px auto;
     display: block;
     border:1px solid white;
+    background: rgb(30,8,41);
+    background: linear-gradient(180deg, rgba(30,8,41,1) 49%, rgba(43,8,94,1) 100%);
+
 }
 
 .status-bar {
+    position: absolute;
     color: white;
     text-align: center;
     div {
         display: inline-block;
-        margin: 10px;
-        width: 17%;
+        margin: 10px 20px;
+        width: 110px;
     }
+}
+
+.health {
+    position: absolute;
+    top: 70px;
+    left: 40px;
+    width: 200px;
+    background: white;
+    border: solid white;
+}
+.health::-moz-progress-bar
+{
+    background: sienna;
+}
+.health::-webkit-progress-bar
+{
+    background: transparent;
+}
+.health::-webkit-progress-value
+{
+    background: sienna;
+}
+
+.pause, .game-over {
+    position: absolute;
+    top: 40%;
+    width: 100%;
+    text-align: center;
+    font-size: 64px;
+    color: white;
+    
 }

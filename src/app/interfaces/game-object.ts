@@ -1,11 +1,12 @@
-import { Engine } from "../utils/engine";
+import { Game } from "../utils/game";
 
 export interface GameObject {
     width: number;
     height: number;
     x: number;
     y: number;
-    game: Engine;
+    game: Game;
     update: () => void;
     draw(): void;
+    collitions(): void;
 }

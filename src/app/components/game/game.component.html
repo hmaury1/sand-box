@@ -1,6 +1,3 @@
-<h1>Sand Box</h1>
-
-<canvas id="canvas"></canvas>
 <div class="status-bar">
     <div>Friction: {{game?.friction}}</div>
     <div>Gravity: {{game?.gravity}}</div>
@@ -8,3 +5,7 @@
     <div>x: {{game?.player?.x | number: '1.0-0'}}</div>
     <div>y: {{game?.player?.y | number: '1.0-0'}}</div>
 </div>
+<progress class="health" [value]="game.player.health" max="100"></progress>
+<div class="pause" *ngIf="game.gamePause">PAUSE</div>
+<div class="game-over" *ngIf="game.gameOver">GAME OVER</div>
+<canvas id="canvas"></canvas>
