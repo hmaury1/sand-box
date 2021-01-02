@@ -9,20 +9,20 @@ export class Cloud {
     private cloudTypes = [
         (_game) => {
             return (instance: Box) => {
-                instance.x = instance.x - .7;
+                instance.x = instance.x - .5;
                 var background = new Image();
                 background.src = "assets/png/blue-clouds.png";
-                _game.ctx.fillStyle = _game.ctx.createPattern(background, 'repeat');
-                _game.ctx.drawImage(background, 0, 0, 470, 250, instance.x, instance.y, 150, 50);
+                _game.ctxBack.fillStyle = _game.ctxBack.createPattern(background, 'repeat');
+                _game.ctxBack.drawImage(background, 0, 0, 470, 250, instance.x, this.game.height - (1080 - instance.y), instance.width, instance.height);
             }
         },
         (_game) => {
             return (instance: Box) => {
-                instance.x = instance.x - .7;
+                instance.x = instance.x - .5;
                 var background = new Image();
                 background.src = "assets/png/blue-clouds.png";
-                _game.ctx.fillStyle = _game.ctx.createPattern(background, 'repeat');
-                _game.ctx.drawImage(background, 350, 320, 470, 180, instance.x, instance.y, 150, 50);
+                _game.ctxBack.fillStyle = _game.ctxBack.createPattern(background, 'repeat');
+                _game.ctxBack.drawImage(background, 350, 320, 470, 180, instance.x, this.game.height - (1080 - instance.y), instance.width, instance.height);
             }
         }
     ];
@@ -33,12 +33,12 @@ export class Cloud {
     
 
     randomClouds() {
-        if (this.cloudsCount == 100) {
+        if (this.cloudsCount == 200) {
             this.clouds.push(new Box(this.game, {
                 x: this.game.width,
                 y: this.getRandomInt(0, this.game.height / 2),
-                width: 842,
-                height: 604,
+                width: 50,
+                height: 15,
                 color: 'blue',
                 render: this.cloudTypes[this.getRandomInt(0,2)](this.game)
             }));
@@ -58,18 +58,10 @@ export class Cloud {
         this.clouds.push(new Box(this.game, {
             x: this.game.width / 4,
             y: this.getRandomInt(0, this.game.height / 2),
-            width: 842,
-            height: 604,
+            width: 50,
+            height: 15,
             color: 'blue',
             render: this.cloudTypes[0](this.game)
-        }));
-        this.clouds.push(new Box(this.game, {
-            x: this.game.width / 2,
-            y: this.getRandomInt(0, this.game.height / 2),
-            width: 842,
-            height: 604,
-            color: 'blue',
-            render: this.cloudTypes[1](this.game)
         }));
     }
 

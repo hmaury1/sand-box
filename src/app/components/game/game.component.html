@@ -1,11 +1,17 @@
-<div class="status-bar">
+<canvas id="back"></canvas>
+<canvas id="game"></canvas>
+<canvas id="front"></canvas>
+<div class="status-bar" *ngIf="game.dev">
+    <div>Health: {{game?.player?.health}}</div>
     <div>Friction: {{game?.friction}}</div>
     <div>Gravity: {{game?.gravity}}</div>
     <div>Player speed: {{game?.player?.speed}}</div>
     <div>x: {{game?.player?.x | number: '1.0-0'}}</div>
     <div>y: {{game?.player?.y | number: '1.0-0'}}</div>
+    <div>velX: {{game?.player?.velX | number: '1.0-0'}}</div>
+    <div>velY: {{game?.player?.velY | number: '1.0-0'}}</div>
+    <div>Camera X: {{game?.level1?.viewport?.x | number: '1.0-0'}}</div>
+    <div>Camera Y: {{game?.level1?.viewport?.y | number: '1.0-0'}}</div>
 </div>
-<progress class="health" [value]="game.player.health" max="100"></progress>
 <div class="pause" *ngIf="game.gamePause">PAUSE</div>
 <div class="game-over" *ngIf="game.gameOver">GAME OVER</div>
-<canvas id="canvas"></canvas>

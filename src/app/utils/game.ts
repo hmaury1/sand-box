@@ -1,52 +1,75 @@
 import { GamePad } from "./game-pad";
 import { Player } from "./player";
-import { Cloud } from "./cloud";
-import { Platform } from "./platform";
-import { Box } from "./box";
+import { Level1 } from "./level1";
+import { Level } from "../interfaces/level";
+
+const DEV_MODE = false;
 
 export class Game {
+    private canvasBack;
     private canvas;
+    private canvasFront;
+    ctxBack: CanvasRenderingContext2D;
     ctx: CanvasRenderingContext2D;
+    ctxFront: CanvasRenderingContext2D;
     width: number;
     height: number;
-    friction: number;
-    gravity: number;
     player: Player;
     keys: string[];
     gameOver: boolean;
     gamePause: boolean;
     gamePauseDelay: number;
     dev: boolean;
+    fireDelay = 0; // TODO
+    fireSprite = 1; // TODO
 
-    cloud: Cloud;
-    platform: Platform;
+    currentLevel: Level;
 
-    constructor(_width, _height, _friction, _gravity) {
-        this.canvas = document.getElementById("canvas");
-        this.ctx = this.canvas.getContext("2d");
-        this.width = _width;
-        this.height = _height;
-        this.friction = _friction;
-        this.gravity = _gravity;
+    constructor() {
+        this.dev = DEV_MODE;
+
+        var win = window,
+        doc = document,
+        docElem = doc.documentElement,
+        body = doc.getElementsByTagName('body')[0];
+        this.width = win.innerWidth || docElem.clientWidth || body.clientWidth;
+        this.height = win.innerHeight|| docElem.clientHeight|| body.clientHeight;
+
         this.keys = [];
+
         this.gameOver = false;
         this.gamePause = false;
-        this.canvas.width = _width;
-        this.canvas.height = _height;
         this.gamePauseDelay = 0;
-        this.dev = false;
 
-        this.cloud = new Cloud(this);
-        this.platform = new Platform(this);
+        this.player = new Player(this);
+
+        this.configureLayers();
+    }
+
+    configureLayers() {
+        this.canvasBack = document.getElementById("back");
+        this.canvas = document.getElementById("game");
+        this.canvasFront = document.getElementById("front");
+        this.ctxBack = this.canvasBack.getContext("2d");
+        this.ctx = this.canvas.getContext("2d");
+        this.ctxFront = this.canvasFront.getContext("2d");
+
+        this.canvasBack.width = this.width;
+        this.canvasBack.height = this.height;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+        this.canvasFront.width = this.width;
+        this.canvasFront.height = this.height;
     }
 
     start() {
         this.addEvents();
-        this.cloud.initClouds();
+        this.currentLevel = new Level1(this);
         this.update();
     }
 
     update = () => {
+        
         let buttonPause = GamePad.getButton(9);
         if (buttonPause?.pressed) {
             this.pause();
@@ -54,10 +77,16 @@ export class Game {
         if(this.gamePauseDelay > 0) {
             this.gamePauseDelay--;
         }
-        this.validateGamePad();
-        this.ctx.clearRect(0, 0, this.width, this.height);
-        this.player.update();
-        this.draw();
+
+        if (!this.gamePause && !this.gameOver) {
+            this.validateGamePad();
+            this.ctxBack.clearRect(0, 0, this.width, this.height);
+            this.ctx.clearRect(0, 0, this.width, this.height);
+            this.ctxFront.clearRect(0, 0, this.width, this.height);    
+            this.currentLevel.drawBackground();
+            this.player.update();
+        }
+
         requestAnimationFrame(this.update);
     }
 
@@ -72,25 +101,6 @@ export class Game {
         } else {
             // Gamepads neither connected nor disconnected.
         }
-    }
-
-    draw() {
-        new Box(this, {
-            x: 0,
-            y: this.height - 1080,
-            width: 1920,
-            height: 1080,
-            render: (instance: Box) => {
-                instance.x = instance.x - .7;
-                var background = new Image();
-                background.src = "assets/png/level1.png";
-                this.ctx.fillStyle = this.ctx.createPattern(background, 'repeat');
-                this.ctx.drawImage(background, 0, 0, 1920, 1080, instance.x, instance.y, 1920, 1080);
-            }
-        }).draw();
-
-        this.cloud.randomClouds();
-        this.platform.draw();
     }
 
     addEvents() {

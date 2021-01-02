@@ -8,5 +8,4 @@ export interface GameObject {
     game: Game;
     update: () => void;
     draw(): void;
-    collitions(): void;
 }
