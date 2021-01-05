@@ -1,6 +1,7 @@
 import { GameObject } from "../interfaces/game-object";
 import { Game } from "./game";
 import { Player } from "./player";
+import * as THREE from 'three';
 
 export class Box implements GameObject {
     x: number;
@@ -12,6 +13,9 @@ export class Box implements GameObject {
     deadly: boolean;
     colliderTopOnly: boolean;
     render: (instance: Box) => void;
+    isStatic = true;
+
+    planeBox: THREE.Mesh;
 
     constructor(game, obj) {
         this.game = game;
@@ -22,24 +26,33 @@ export class Box implements GameObject {
         this.render = obj.render;
         this.collisable = !(obj.collisable == false);
         this.deadly = obj.deadly;
-        this.colliderTopOnly = obj.colliderTopOnly;
+        this.colliderTopOnly = obj.colliderTopOnly == true;
+        this.isStatic = !(obj.isStatic == false);
+        this.start();
+    }
+
+    start() {
+        if (this.game.dev && this.collisable && !this.render) {
+            let color = (this.deadly ? 'red': (this.colliderTopOnly ? 'white': (this.isStatic ? 'green': 'black')));
+            this.planeBox = new THREE.Mesh(new THREE.PlaneGeometry(this.width, this.height), new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: .5 }));
+            this.game.scene.add(this.planeBox);
+        }
     }
 
     draw() {
         if (this.render) {
             this.render(this);
         } else {
-            if (this.collisable) {
-                this.game.ctxFront.fillStyle = this.deadly ? '#ffa2a24d' : (this.colliderTopOnly ? '#ffffff9e' : '#a2ffa34d');
-                this.game.ctxFront.fillRect(this.x, this.game.height - (1080 - this.y), this.width, this.height);
+            if (this.game.dev && this.collisable) {
+                this.planeBox.translateX(this.x + (this.width / 2) - this.planeBox.position.x);
+                this.planeBox.translateY(this.y + (this.height / 2) - this.planeBox.position.y);
             }
         }
     }
 
     update() {
-        if (this.game.dev || !this.collisable) {
-            this.draw();
-        }
+        this.collitions();
+        this.draw();
     }
 
     collitions() {
@@ -47,8 +60,9 @@ export class Box implements GameObject {
             let shapeA: Player = this.game.player;
             let shapeB: Box = this;
             // get the vectors to check against
+
             var vX = (shapeA.x + (shapeA.width / 2)) - (shapeB.x + (shapeB.width / 2)),
-                vY = (shapeA.y + (shapeA.height / 2)) - (this.game.height - (1080 - shapeB.y) + (shapeB.height / 2)),
+                vY = (shapeA.y + (shapeA.height / 2)) - (shapeB.y + (shapeB.height / 2)),
                 // add the half widths and half heights of the objects
                 hWidths = (shapeA.width / 2) + (shapeB.width / 2),
                 hHeights = (shapeA.height / 2) + (shapeB.height / 2),
@@ -59,33 +73,46 @@ export class Box implements GameObject {
                 var oX = hWidths - Math.abs(vX), oY = hHeights - Math.abs(vY);
                 if (oX >= oY) {
                     if (vY > 0) {
-                        if (!this.colliderTopOnly) {
-                            colDir = "t";
-                            shapeA.y += oY;
-                            shapeA.velY = 0;
+                        if (shapeA.velY <= -0.6) { 
+                            if (this.game.player.fallingDelay == 0 || !this.colliderTopOnly) { 
+                                colDir = "b";
+                                shapeA.y += (!this.colliderTopOnly ? oY : ((shapeA.y - (shapeB.y + shapeB.height)) > -15) ? oY : 0); 
+                                shapeA.velY = 0;
+                                if (shapeA.jumping) {
+                                    shapeA.jumping = false;
+                                    shapeA.jumpDelay = 10; // 10 frames
+                                }
+                            }
                         }
                     } else {
-                        if (shapeA.velY > 0) {
-                            colDir = "b";
+                        if (!this.colliderTopOnly && shapeA.velY >= 0.6) {
+                            colDir = "t";
                             shapeA.y -= oY;
                             shapeA.velY = 0;
-                            if (shapeA.jumping) {
-                                shapeA.jumping = false;
-                                shapeA.jumpDelay = 10; // 10 frames
-                            }
                         }
                     }
                 } else {
                     if (!this.colliderTopOnly && vX > 0 && shapeA.currentSpriteDirection === 'left') {
-                        shapeA.velX = 0;
                         colDir = "l";
-                        // shapeB.x -= oX;
+                        if (shapeB.isStatic) {
+                            shapeA.velX = 0;
+                            shapeA.x += oX - 1;
+                        } else {
+                            shapeA.velX = shapeA.velX / 2;
+                            shapeB.x -= oX;
+                        }
                     }
 
                     if (!this.colliderTopOnly && vX < 0 && shapeA.currentSpriteDirection === 'right') {
                         colDir = "r";
-                        shapeA.velX = 0;
-                        // shapeB.x += oX;
+                        
+                        if (shapeB.isStatic) {
+                            shapeA.velX = 0;
+                            shapeA.x -= oX - 1;
+                        } else {
+                            shapeA.velX = shapeA.velX / 2;
+                            shapeB.x += oX;
+                        }
                     }
                 }
             }

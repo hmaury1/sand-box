@@ -3,21 +3,20 @@ import { Level } from "../interfaces/level";
 import { Box } from "./box";
 import { Game } from "./game";
 import { GamePad } from "./game-pad";
+import * as THREE from 'three';
 
-const PLAYER_WIDTH = 45;
-const PLAYER_HEIGH = 75; 
+const PLAYER_WIDTH = 35;
+const PLAYER_HEIGH = 65;
 const PLAYER_SPEED = 6;
 const GRAVITY = .6;
 const FRICTION = .85;
-const HIT_BOX_COLOR = '#a2ffa34d';
-const SPRITES_SET = "assets/png/playerX2.png";
-
+const HIT_BOX_COLOR = 'blue';
 
 export class Player implements GameObject {
     x: number;
     y: number;
-    width: number;
-    height: number;
+    width: number; // hitboxWidth
+    height: number; // hitboxHeight
     speed: number;
     velX: number;
     velY: number;
@@ -27,20 +26,30 @@ export class Player implements GameObject {
     friction: number;
     gravity: number;
 
-    grounded: boolean;
     jumping: boolean;
     jumpDelay: number;
+    fallingDelay = 0;
 
     currentSprite = 0;
     currentSpriteDelay = 0;
     currentSpriteDirection = 'right';
 
+    jumpBlur = true;
+
     game: Game;
     keys = [];
 
+    planePlayer: THREE.Mesh;
+    planeHealthBar: THREE.Mesh;
+    planeHealthBarContainer: THREE.Mesh;
+
+    texture: THREE.Texture;
+    playerSprite: THREE.Mesh;
+
+
     constructor(_game: Game) {
-        this.x = 50;
-        this.y = _game.height - PLAYER_HEIGH - 150; 
+        this.x = 480;
+        this.y = 380;
         this.width = PLAYER_WIDTH;
         this.height = PLAYER_HEIGH;
         this.speed = PLAYER_SPEED;
@@ -58,17 +67,43 @@ export class Player implements GameObject {
         this.addEvents();
     }
 
-    update = () => { 
-        let level:Level = this.game.currentLevel;
+    start() {
+        // init dev playe box
+        if (this.game.dev) {
+            this.planePlayer = new THREE.Mesh(new THREE.PlaneGeometry(this.width, this.height), new THREE.MeshBasicMaterial({ color: HIT_BOX_COLOR, transparent: true, opacity: .5 }));
+            //this.planePlayer.translateZ(-1);
+            this.game.scene.add(this.planePlayer);
+        }
+        // init player sprite
+        this.texture = new THREE.TextureLoader().load('assets/png/player.png');
+        this.texture.wrapS = this.texture.wrapT = THREE.RepeatWrapping;
+        this.texture.repeat.set(1 / 8, 1 / 8);
+        this.texture.offset.x = 0;
+        this.texture.offset.y = 0;
+        let geometrySprite = new THREE.PlaneGeometry(96, 96);
+        this.playerSprite = new THREE.Mesh(geometrySprite, new THREE.MeshLambertMaterial({ map: this.texture, transparent: true }));
+        this.game.scene.add(this.playerSprite);
+
+        this.planeHealthBarContainer = new THREE.Mesh(new THREE.PlaneGeometry(204, 12), new THREE.MeshBasicMaterial({ color: 'white' }));
+        this.planeHealthBarContainer.translateX(250);
+        this.planeHealthBarContainer.translateY(this.game.height - 50);
+        this.game.scene.add(this.planeHealthBarContainer);
+    }
+
+    update = () => {
         this.ActionValidations();
 
-        if (this.velX < 0.1 && this.velX >  -0.1) {
+        if (this.velX < 0.1 && this.velX > -0.1) {
             this.velX = 0;
         } else {
             this.velX *= FRICTION;
         }
-        this.velY += GRAVITY;
+        this.velY -= GRAVITY;
         this.y += this.velY;
+
+        if (this.fallingDelay > 0) {
+            this.fallingDelay--;
+        }
 
         if (this.jumpDelay > 0) {
             this.jumpDelay--;
@@ -77,50 +112,36 @@ export class Player implements GameObject {
         if (this.healthDelay > 0) {
             this.healthDelay--;
         }
-
-        level.boxes.forEach((box: Box) => {
-            box.collitions();
-        });
-        level.velX = 0;
-        if (this.velX > 0) {
-            if ((level.viewport.x * -1) + this.game.width <= level.viewport.width) {
-                if (this.x > (this.game.width - this.width) / 2) {
-                    level.velX = this.velX;
-                } else {
-                    this.x  +=  this.velX;
-                }
-            } else {
-                this.x  +=  this.velX;
-            }
-        } else {
-            if (level.viewport.x < 0) {
-                if (this.x < (this.game.width - this.width) / 2) {
-                    level.velX = this.velX;
-                } else {
-                    this.x  +=  this.velX;
-                }
-            } else {
-                this.x  +=  this.velX;
-            }
-        }
-        level.boxes.forEach((box: Box) => {
-            box.x -= level.velX;
+        this.game.currentLevel.boxes.forEach((box: Box) => {
             box.update();
         });
         this.collitions();
+        this.x += this.velX;
+        if (this.velX != 0) {
+            if (this.x >= this.game.width / 2 && this.x < this.game.currentLevel.viewport.width - this.game.width / 2) {
+                this.game.camera.translateX(this.velX);
+            } else {
+                if (this.x < this.game.width / 2) {
+                    this.game.camera.position.set(0, this.game.camera.position.y, this.game.camera.position.z);
+                }
+                if (this.x > this.game.currentLevel.viewport.width - this.game.width / 2) {
+                    this.game.camera.position.set(this.game.currentLevel.viewport.width - this.game.width, this.game.camera.position.y, this.game.camera.position.z);
+                }
+            }
+        }
         this.draw();
     }
 
     collitions() {
-        if (this.x >= this.game.width - this.width) {
+        if (this.x >= this.game.currentLevel.viewport.width - this.width) {
             // right
-            if(this.currentSpriteDirection == 'right') {
+            if (this.currentSpriteDirection == 'right') {
                 this.velX = 0;
-                this.x = this.game.width - this.width;
+                this.x = this.game.currentLevel.viewport.width - this.width;
             }
         } else if (this.x <= 0) {
             // left
-            if(this.currentSpriteDirection == 'left') {
+            if (this.currentSpriteDirection == 'left') {
                 this.velX = 0;
                 this.x = 0;
             }
@@ -152,18 +173,35 @@ export class Player implements GameObject {
     }
 
     ActionValidations() {
+
+        if (this.health == 0 || this.game.gameOver) {
+            return;
+        }
+
         // check keyBoard and Gamepad
         let buttonLeft = GamePad.getButton(14);
-        let buttonJump = GamePad.getButton(0);
+        let buttonA = GamePad.getButton(0);
+        let buttonDown = GamePad.getButton(13);
         let buttonRight = GamePad.getButton(15);
         let stickX = GamePad.getAxes(0);
+        let stickY = GamePad.getAxes(1);
 
         // Jump
-        if (this.keys['ArrowUp'] || this.keys['Space'] || this.keys['KeyW'] || buttonJump?.pressed) {
-            if (!this.jumping && this.velY === 0  && this.jumpDelay == 0 ) {
+        if (this.keys['Space'] || buttonA?.pressed) {
+            if (!this.jumping && this.jumpBlur && this.velY === 0 && this.jumpDelay == 0) {
+                if (this.keys['ArrawDown'] || buttonDown?.pressed || stickY == 1) {
+                    this.currentSprite = 3;
+                    this.fallingDelay = this.game.frameRateBase / 5;
+                } else {
+                    this.currentSprite = 0;
+                    this.velY = this.speed * 2;
+                }
                 this.jumping = true;
-                this.velY = -this.speed * 2;
+                this.jumpBlur = false;
+
             }
+        } else {
+            this.jumpBlur = true;
         }
 
         // Move to right
@@ -185,86 +223,90 @@ export class Player implements GameObject {
         // Move using stick
         if (stickX) {
             this.currentSpriteDirection = stickX > 0 ? 'right' : 'left';
-            this.velX += stickX;
+            if (this.velX > -this.speed && this.velX < this.speed) {
+                this.velX += stickX;
+            }
         }
     }
 
     draw() {
-        let spriteSize = 96;
-        let spriteRealSizeX = 56;
-        let spriteRealSizeY = 80;
-        let spriteOffsetX = 22;
-        let spriteOffsetY = 5;
-        let spriteIntenalOffsetX = 0;
-        let spriteIntenalOffsetY = -5;
-        let spriteLimit = spriteSize * 6;
+        this.playerSprite.visible = true;
         let currentSpriteColumn = 0;
         let currentSpriteRow = 0;
         let defaultVelocity = 0;
 
-        if (this.currentSpriteDelay > 6) {
-            this.currentSprite = this.currentSprite >= spriteLimit ? 0 : this.currentSprite + spriteSize;
+        if (this.velX > 0) {
+            // run right
+            currentSpriteColumn = this.currentSprite;
+            currentSpriteRow = this.velY != defaultVelocity ? 1 : 3;
+        }
+        
+        if (this.velX < 0) {
+            // run letf
+            currentSpriteColumn = 8 - this.currentSprite;
+            currentSpriteRow = this.velY != defaultVelocity ? 0 : 2;
+        }
+
+        if (this.velX == 0 && this.currentSpriteDirection === 'right') {
+            // idle right
+            currentSpriteColumn = this.currentSprite;
+            currentSpriteRow = this.velY != defaultVelocity ? 1 : 5;
+        } 
+        
+        if (this.velX == 0 && this.currentSpriteDirection === 'left'){
+            // idle left
+            currentSpriteColumn = 8 - this.currentSprite;
+            currentSpriteRow = this.velY != defaultVelocity ? 0 : 4;
+        }
+
+        if (this.health == 0){
+            // death
+            currentSpriteColumn = this.currentSprite;
+            currentSpriteRow = 6;
+            if (this.currentSprite == 7 && !this.game.gameOver) {
+                this.game.gameOver = true;
+            }
+        }
+        
+        if (this.health > 0 && this.healthDelay && Math.trunc(this.healthDelay / 10) % 2 === 0) { 
+            // hit
+            this.playerSprite.visible = false;
+        } 
+        console.log(currentSpriteColumn, currentSpriteRow)
+        this.texture.offset.x = currentSpriteColumn / 8;
+        this.texture.offset.y = currentSpriteRow / 8;
+        this.playerSprite.translateX((this.x + (this.width / 2)) - this.playerSprite.position.x);
+        this.playerSprite.translateY((this.y + (this.height / 2)) - this.playerSprite.position.y);
+
+        if (this.game.dev) {
+            this.planePlayer.material = new THREE.MeshBasicMaterial({ color: HIT_BOX_COLOR, transparent: true, opacity: .7 });
+            this.planePlayer.translateX((this.x + (this.width / 2)) - this.planePlayer.position.x);
+            this.planePlayer.translateY((this.y + (this.height / 2)) - this.planePlayer.position.y);
+        }
+        this.drawHealthBar();
+        if (this.currentSpriteDelay > this.game.frameRateBase / (this.jumping ? 16 : 8)) {
+            this.currentSprite = this.currentSprite == 7 ? (this.health == 0 ? 7 : 0) : this.currentSprite + 1;
             this.currentSpriteDelay = 0;
         }
         this.currentSpriteDelay++;
-        if (!this.healthDelay || Math.trunc(this.healthDelay / 10)  % 2 === 0) {
-            if (this.velX > 0) {
-                // run right
-                currentSpriteColumn = this.currentSprite;
-                currentSpriteRow =  spriteSize * (this.velY != defaultVelocity ? 4 : 2);
-            } else if(this.velX < 0) {
-                // run letf
-                currentSpriteColumn = spriteLimit - this.currentSprite;
-                currentSpriteRow =  spriteSize * (this.velY != defaultVelocity ? 5 : 3);
-                spriteIntenalOffsetX = -5;
-            } else {
-                if (this.currentSpriteDirection === 'right') {
-                    // idle right
-                    currentSpriteColumn = this.currentSprite;
-                    currentSpriteRow =  spriteSize * (this.velY != defaultVelocity ? 4 : 0);
-                    spriteIntenalOffsetX = 5;
-                } else {
-                    // idle left
-                    currentSpriteColumn = spriteLimit - this.currentSprite;
-                    currentSpriteRow =   spriteSize * (this.velY != defaultVelocity ? 5 : 1);
-                    spriteIntenalOffsetX = -10;
-                }
-            }
+    }
 
-            if (this.game.dev) {
-                this.game.ctx.fillStyle = HIT_BOX_COLOR;
-                this.game.ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
-            var background = new Image();
-            background.src = SPRITES_SET;
-            this.game.ctx.fillStyle = this.game.ctx.createPattern(background, 'repeat');
-            this.game.ctx.drawImage(
-                background,
-                currentSpriteColumn + spriteOffsetX,
-                currentSpriteRow + spriteOffsetY,
-                spriteRealSizeX,
-                spriteRealSizeY + spriteOffsetY,
-                this.x + spriteIntenalOffsetX,
-                this.y + spriteIntenalOffsetY,
-                spriteRealSizeX,
-                spriteRealSizeY);
-        }
-
-        this.game.ctxFront.fillStyle = 'white';
-        this.game.ctxFront.fillRect(50, 50, 204, 12);
-
-        this.game.ctxFront.fillStyle = 'red';
-        this.game.ctxFront.fillRect(52, 52, this.health * 2, 8);
+    drawHealthBar() {
+        this.planeHealthBarContainer.translateX(this.game.camera.position.x + 150 - this.planeHealthBarContainer.position.x);
+        if (this.planeHealthBar)
+            this.game.scene.remove(this.planeHealthBar);
+        this.planeHealthBar = new THREE.Mesh(new THREE.PlaneGeometry(this.health * 2, 8), new THREE.MeshBasicMaterial({ color: 'red', transparent: true }));
+        this.planeHealthBar.translateX(50 + this.health - this.planeHealthBar.position.x);
+        this.planeHealthBar.translateY((this.game.height - 50) - this.game.camera.position.y);
+        this.game.scene.add(this.planeHealthBar);
     }
 
     setHealth(hit: number = 20) {
         if (this.healthDelay <= 0) {
             let newValue = this.health - hit;
-            this.health = newValue >= 0 ? newValue : 0;
-            this.healthDelay = 60;
-            if (this.health === 0) {
-                this.game.gameOver = true;
-            }
+            this.health = newValue;
+            this.health = this.health < 0 ? 0 : this.health;
+            this.healthDelay = this.game.frameRateBase;
         }
     }
 }

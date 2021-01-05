@@ -5,7 +5,9 @@ export interface Level {
     game: Game
     boxes: Box[];
     viewport: Box;
-    velX: number
 
-    drawBackground: () => void;
+    start: () => void;
+    draw: () => void;
+    drawBack: () => void;
+    drawFront: () => void;
 }
