@@ -200,7 +200,7 @@ export class Player implements GameObject {
 
         // Jump
         if (this.keys['Space'] || buttonA?.pressed) {
-            if (!this.jumping && this.jumpBlur && this.velY == 0 && this.jumpDelay == 0) {
+            if (!this.attacking && !this.jumping && this.jumpBlur && this.velY == 0 && this.jumpDelay == 0) {
                 if (this.keys['ArrawDown'] || buttonDown?.pressed || stickY == 1) {
                     this.currentSprite = 3;
                     this.fallingDelay = this.game.frameRateBase / 5;
@@ -242,8 +242,10 @@ export class Player implements GameObject {
 
         // Attack
         if (this.keys['KeyX'] || buttonB?.pressed) {
-            this.currentSprite = 0;
-            this.attacking = true;
+            if(!this.attacking && !this.jumping) {
+                this.currentSprite = 0;
+                this.attacking = true;
+            }
         }
     }
 
@@ -310,7 +312,7 @@ export class Player implements GameObject {
         this.drawHealthBar();
 
         
-        if (this.currentSpriteDelay > this.game.frameRateBase / (this.jumping ? 16 : 8)) {
+        if (this.currentSpriteDelay > this.game.frameRateBase / (this.jumping || this.attacking ? 16 : 8)) {
             this.currentSprite = this.currentSprite == 7 ? (this.health == 0 ? 7 : 0) : this.currentSprite + 1;
             this.currentSpriteDelay = 0;
         }
