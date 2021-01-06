@@ -71,7 +71,6 @@ export class Game {
 
     update = () => {
         requestAnimationFrame(this.update);
-
         this.gameTime += this.clock.getDelta();
         this.framesCounter++;
         if (this.gameTime >= this.currentTime + 1) { // 1 second 

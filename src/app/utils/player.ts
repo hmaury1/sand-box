@@ -5,8 +5,8 @@ import { Game } from "./game";
 import { GamePad } from "./game-pad";
 import * as THREE from 'three';
 
-const PLAYER_WIDTH = 35;
-const PLAYER_HEIGH = 65;
+const PLAYER_WIDTH = 40;
+const PLAYER_HEIGH = 70;
 const PLAYER_SPEED = 6;
 const GRAVITY = .6;
 const FRICTION = .85;
@@ -34,6 +34,8 @@ export class Player implements GameObject {
     currentSpriteDelay = 0;
     currentSpriteDirection = 'right';
 
+    attacking = false;
+
     jumpBlur = true;
 
     game: Game;
@@ -43,7 +45,8 @@ export class Player implements GameObject {
     planeHealthBar: THREE.Mesh;
     planeHealthBarContainer: THREE.Mesh;
 
-    texture: THREE.Texture;
+    textureRight: THREE.Texture;
+    textureLeft: THREE.Texture;
     playerSprite: THREE.Mesh;
 
 
@@ -71,17 +74,21 @@ export class Player implements GameObject {
         // init dev playe box
         if (this.game.dev) {
             this.planePlayer = new THREE.Mesh(new THREE.PlaneGeometry(this.width, this.height), new THREE.MeshBasicMaterial({ color: HIT_BOX_COLOR, transparent: true, opacity: .5 }));
-            //this.planePlayer.translateZ(-1);
+            this.planePlayer.translateZ(-1);
             this.game.scene.add(this.planePlayer);
         }
         // init player sprite
-        this.texture = new THREE.TextureLoader().load('assets/png/player.png');
-        this.texture.wrapS = this.texture.wrapT = THREE.RepeatWrapping;
-        this.texture.repeat.set(1 / 8, 1 / 8);
-        this.texture.offset.x = 0;
-        this.texture.offset.y = 0;
-        let geometrySprite = new THREE.PlaneGeometry(96, 96);
-        this.playerSprite = new THREE.Mesh(geometrySprite, new THREE.MeshLambertMaterial({ map: this.texture, transparent: true }));
+        this.textureRight = new THREE.TextureLoader().load('assets/png/playerRight.png');
+        this.textureRight.wrapS = this.textureRight.wrapT = THREE.RepeatWrapping;
+        this.textureRight.repeat.set(1 / 8, 1 / 12);
+
+        this.textureLeft = new THREE.TextureLoader().load('assets/png/playerLeft.png');
+        this.textureLeft.wrapS = this.textureLeft.wrapT = THREE.RepeatWrapping;
+        this.textureLeft.repeat.set(1 / 8, 1 / 12);
+
+
+        let geometrySprite = new THREE.PlaneGeometry(128, 128);
+        this.playerSprite = new THREE.Mesh(geometrySprite, new THREE.MeshLambertMaterial({ map: this.textureRight, transparent: true }));
         this.game.scene.add(this.playerSprite);
 
         this.planeHealthBarContainer = new THREE.Mesh(new THREE.PlaneGeometry(204, 12), new THREE.MeshBasicMaterial({ color: 'white' }));
@@ -92,12 +99,16 @@ export class Player implements GameObject {
 
     update = () => {
         this.ActionValidations();
-
-        if (this.velX < 0.1 && this.velX > -0.1) {
-            this.velX = 0;
+        if (!this.attacking) {
+            if (this.velX < 0.1 && this.velX > -0.1) {
+                this.velX = 0;
+            } else {
+                this.velX *= FRICTION;
+            }
         } else {
-            this.velX *= FRICTION;
+            this.velX = 0;
         }
+        
         this.velY -= GRAVITY;
         this.y += this.velY;
 
@@ -181,6 +192,7 @@ export class Player implements GameObject {
         // check keyBoard and Gamepad
         let buttonLeft = GamePad.getButton(14);
         let buttonA = GamePad.getButton(0);
+        let buttonB = GamePad.getButton(1);
         let buttonDown = GamePad.getButton(13);
         let buttonRight = GamePad.getButton(15);
         let stickX = GamePad.getAxes(0);
@@ -188,7 +200,7 @@ export class Player implements GameObject {
 
         // Jump
         if (this.keys['Space'] || buttonA?.pressed) {
-            if (!this.jumping && this.jumpBlur && this.velY === 0 && this.jumpDelay == 0) {
+            if (!this.jumping && this.jumpBlur && this.velY == 0 && this.jumpDelay == 0) {
                 if (this.keys['ArrawDown'] || buttonDown?.pressed || stickY == 1) {
                     this.currentSprite = 3;
                     this.fallingDelay = this.game.frameRateBase / 5;
@@ -205,7 +217,7 @@ export class Player implements GameObject {
         }
 
         // Move to right
-        if (this.keys['ArrowRight'] || this.keys['KeyD'] || buttonRight?.pressed) {
+        if (this.keys['ArrowRight'] || buttonRight?.pressed) {
             this.currentSpriteDirection = 'right';
             if (this.velX < this.speed) {
                 this.velX++;
@@ -213,7 +225,7 @@ export class Player implements GameObject {
         }
 
         // Move to Left
-        if (this.keys['ArrowLeft'] || this.keys['KeyA'] || buttonLeft?.pressed) {
+        if (this.keys['ArrowLeft'] || buttonLeft?.pressed) {
             this.currentSpriteDirection = 'left';
             if (this.velX > -this.speed) {
                 this.velX--;
@@ -227,6 +239,12 @@ export class Player implements GameObject {
                 this.velX += stickX;
             }
         }
+
+        // Attack
+        if (this.keys['KeyX'] || buttonB?.pressed) {
+            this.currentSprite = 0;
+            this.attacking = true;
+        }
     }
 
     draw() {
@@ -235,48 +253,54 @@ export class Player implements GameObject {
         let currentSpriteRow = 0;
         let defaultVelocity = 0;
 
-        if (this.velX > 0) {
-            // run right
-            currentSpriteColumn = this.currentSprite;
-            currentSpriteRow = this.velY != defaultVelocity ? 1 : 3;
-        }
-        
-        if (this.velX < 0) {
-            // run letf
-            currentSpriteColumn = 8 - this.currentSprite;
-            currentSpriteRow = this.velY != defaultVelocity ? 0 : 2;
-        }
+        currentSpriteColumn = this.currentSprite;
 
-        if (this.velX == 0 && this.currentSpriteDirection === 'right') {
-            // idle right
+        // idle
+        if (this.velX == 0) {
+            currentSpriteRow = 0;
+        }
+        // run
+        if (this.velX != 0) {
+            currentSpriteRow = 1;
+        }
+        // jump
+        if (this.velY != defaultVelocity) {
+            currentSpriteRow = 2;
+            if (this.currentSprite  == 7) {
+                this.currentSprite = 0;
+            }
             currentSpriteColumn = this.currentSprite;
-            currentSpriteRow = this.velY != defaultVelocity ? 1 : 5;
-        } 
+            console.log(currentSpriteColumn);
+        }
         
-        if (this.velX == 0 && this.currentSpriteDirection === 'left'){
-            // idle left
-            currentSpriteColumn = 8 - this.currentSprite;
-            currentSpriteRow = this.velY != defaultVelocity ? 0 : 4;
+        if (this.attacking) {
+            currentSpriteRow = 4;
+            if(this.currentSprite == 7) {
+                this.attacking = false;
+            }
         }
 
         if (this.health == 0){
             // death
-            currentSpriteColumn = this.currentSprite;
-            currentSpriteRow = 6;
+            currentSpriteRow = 3;
             if (this.currentSprite == 7 && !this.game.gameOver) {
                 this.game.gameOver = true;
             }
         }
         
-        if (this.health > 0 && this.healthDelay && Math.trunc(this.healthDelay / 10) % 2 === 0) { 
+        if (this.health > 0 && this.healthDelay && Math.trunc(this.healthDelay / 10) % 2 == 0) { 
             // hit
             this.playerSprite.visible = false;
         } 
-        console.log(currentSpriteColumn, currentSpriteRow)
-        this.texture.offset.x = currentSpriteColumn / 8;
-        this.texture.offset.y = currentSpriteRow / 8;
-        this.playerSprite.translateX((this.x + (this.width / 2)) - this.playerSprite.position.x);
-        this.playerSprite.translateY((this.y + (this.height / 2)) - this.playerSprite.position.y);
+
+        this.textureLeft.offset.x = (this.currentSpriteDirection == 'right' ? currentSpriteColumn : 7 - currentSpriteColumn) / 8;
+        this.textureLeft.offset.y = currentSpriteRow / 12;
+        this.textureRight.offset.x = (this.currentSpriteDirection == 'right' ? currentSpriteColumn : 7 - currentSpriteColumn) / 8;
+        this.textureRight.offset.y = currentSpriteRow / 12;
+
+        this.playerSprite.material = new THREE.MeshLambertMaterial({ map: this.currentSpriteDirection == 'right' ? this.textureRight : this.textureLeft, transparent: true });
+        this.playerSprite.translateX((this.x + (this.currentSpriteDirection == 'right' ? 25 : -25) + (this.width / 2)) - this.playerSprite.position.x);
+        this.playerSprite.translateY((this.y + 23 + (this.height / 2)) - this.playerSprite.position.y);
 
         if (this.game.dev) {
             this.planePlayer.material = new THREE.MeshBasicMaterial({ color: HIT_BOX_COLOR, transparent: true, opacity: .7 });
@@ -284,6 +308,8 @@ export class Player implements GameObject {
             this.planePlayer.translateY((this.y + (this.height / 2)) - this.planePlayer.position.y);
         }
         this.drawHealthBar();
+
+        
         if (this.currentSpriteDelay > this.game.frameRateBase / (this.jumping ? 16 : 8)) {
             this.currentSprite = this.currentSprite == 7 ? (this.health == 0 ? 7 : 0) : this.currentSprite + 1;
             this.currentSpriteDelay = 0;
@@ -296,8 +322,8 @@ export class Player implements GameObject {
         if (this.planeHealthBar)
             this.game.scene.remove(this.planeHealthBar);
         this.planeHealthBar = new THREE.Mesh(new THREE.PlaneGeometry(this.health * 2, 8), new THREE.MeshBasicMaterial({ color: 'red', transparent: true }));
-        this.planeHealthBar.translateX(50 + this.health - this.planeHealthBar.position.x);
-        this.planeHealthBar.translateY((this.game.height - 50) - this.game.camera.position.y);
+        this.planeHealthBar.translateX(50 + this.health - this.planeHealthBar.position.x + this.game.camera.position.x);
+        this.planeHealthBar.translateY((this.game.height - 50) + this.game.camera.position.y);
         this.game.scene.add(this.planeHealthBar);
     }
 
