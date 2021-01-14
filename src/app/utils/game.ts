@@ -92,6 +92,7 @@ export class Game {
             this.validateGamePad();
             this.currentLevel.draw();
             this.player.update();
+            this.player.drawHealthAndMagicBar();
             this.renderer.render(this.scene, this.camera);
         }
     }

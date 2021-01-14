@@ -3,8 +3,8 @@ import { Box } from "../box";
 import { Game } from "../game";
 import * as THREE from 'three';
 
-const TEXTURE_BACK = new THREE.TextureLoader().load('assets/png/level1Back.png');
-const TEXTURE_FRONT = new THREE.TextureLoader().load('assets/png/level1Front.png');
+const TEXTURE_BACK = new THREE.TextureLoader().load('assets/png/level1/back.png');
+const TEXTURE_FRONT = new THREE.TextureLoader().load('assets/png/level1/front.png');
 const TEXTURE_BACKGROUND1 = new THREE.TextureLoader().load('assets/png/level1/bakcground_night1.png');
 const TEXTURE_BACKGROUND2 = new THREE.TextureLoader().load('assets/png/level1/bakcground_night2.png');
 const TEXTURE_BACKGROUND3 = new THREE.TextureLoader().load('assets/png/level1/bakcground_night3.png');
@@ -37,7 +37,6 @@ export class Level1 implements Level {
     start() {
         this.boxes = [
             new Box(this.game, { x: 0,   y:  0, width: 240,    height: 48}),
-            new Box(this.game, { x: 1000,   y:  48, width: 60,  height: 60, isStatic: false, render: this.moveableBoxRender}),
             new Box(this.game, { x: 372, y:  0, width: 270,    height: 48 }),
             new Box(this.game, { x: 240, y:  0, width: 132,    height: 1, deadly: true }),
             new Box(this.game, { x: 643, y:  0, width: 280,    height: 1, deadly: true }),
@@ -46,6 +45,8 @@ export class Level1 implements Level {
             new Box(this.game, { x: 421, y:  368, width: 146,  height: 12, colliderTopOnly: true }),
             new Box(this.game, { x: 710, y:  452, width: 123,  height: 38 }),
             new Box(this.game, { x: 923, y:  0, width: 2919,   height: 48 }),
+            new Box(this.game, { x: 1000,   y:  48, width: 60,  height: 60, isStatic: false, render: this.moveableBoxRender}),
+            new Box(this.game, { x: 1228,   y:  88, width: 60,  height: 995 }),
         ];
     }
 
